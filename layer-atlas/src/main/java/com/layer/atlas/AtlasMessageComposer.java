@@ -26,11 +26,15 @@ import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.support.v4.graphics.drawable.DrawableCompat;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.PopupMenu;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -38,7 +42,8 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.PopupWindow;
+import android.support.v7.widget.AppCompatPopupWindow;
+//import android.widget.PopupWindow;
 import android.widget.TextView;
 
 import com.layer.atlas.messagetypes.AttachmentSender;
@@ -50,6 +55,8 @@ import com.layer.sdk.LayerClient;
 import com.layer.sdk.listeners.LayerTypingIndicatorListener;
 import com.layer.sdk.messaging.Conversation;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 
 public class AtlasMessageComposer extends FrameLayout {
@@ -65,7 +72,7 @@ public class AtlasMessageComposer extends FrameLayout {
     private ArrayList<AttachmentSender> mAttachmentSenders = new ArrayList<AttachmentSender>();
     private MessageSender.Callback mMessageSenderCallback;
 
-    private PopupWindow mAttachmentMenu;
+    private AppCompatPopupWindow mAttachmentMenu;
 
     // styles
     private boolean mEnabled;
@@ -105,9 +112,49 @@ public class AtlasMessageComposer extends FrameLayout {
         mAttachButton = (ImageView) findViewById(R.id.attachment);
         mAttachButton.setOnClickListener(new OnClickListener() {
             public void onClick(View v) {
-                LinearLayout menu = (LinearLayout) mAttachmentMenu.getContentView();
-                menu.measure(MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
-                mAttachmentMenu.showAsDropDown(v, 0, -menu.getMeasuredHeight() - v.getHeight());
+                PopupMenu popupMenu = new PopupMenu(getContext(), v);
+
+                //This is a terrible, evil and terrible hack to allow to show
+                //icons on the menu. But works. :)
+                try {
+                    Field[] fields = popupMenu.getClass().getDeclaredFields();
+                    for (Field field : fields) {
+                        if ("mPopup".equals(field.getName())) {
+                            field.setAccessible(true);
+                            Object menuPopupHelper = field.get(popupMenu);
+                            Class<?> classPopupHelper = Class.forName(menuPopupHelper
+                                    .getClass().getName());
+                            Method setForceIcons = classPopupHelper.getMethod(
+                                    "setForceShowIcon", boolean.class);
+                            setForceIcons.invoke(menuPopupHelper, true);
+                            break;
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                MenuInflater inflater = ((AppCompatActivity) getContext()).getMenuInflater();
+                inflater.inflate(R.menu.menu_attachment,popupMenu.getMenu());
+                popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                    @Override
+                    public boolean onMenuItemClick(MenuItem item) {
+                        int id = item.getItemId();
+                        if (id == R.id.action_attachment_photo) {
+                            mAttachmentSenders.get(0).requestSend();
+                            return true;
+                        }
+                        if (id == R.id.action_attachment_gallery) {
+                            mAttachmentSenders.get(1).requestSend();
+                            return true;
+                        }
+                        if (id == R.id.action_attachment_location) {
+                            mAttachmentSenders.get(2).requestSend();
+                            return true;
+                        }
+                        return false;
+                    }
+                });
+                popupMenu.show();
             }
         });
 
@@ -330,9 +377,9 @@ public class AtlasMessageComposer extends FrameLayout {
         if (mAttachmentMenu != null) throw new IllegalStateException("Already initialized menu");
 
         if (attrs == null) {
-            mAttachmentMenu = new PopupWindow(context);
+            mAttachmentMenu = new AppCompatPopupWindow(context,attrs,defStyle);
         } else {
-            mAttachmentMenu = new PopupWindow(context, attrs, defStyle);
+            mAttachmentMenu = new AppCompatPopupWindow(context, attrs, defStyle);
         }
         mAttachmentMenu.setContentView(LayoutInflater.from(context).inflate(R.layout.atlas_message_composer_attachment_menu, null));
         mAttachmentMenu.setWindowLayoutMode(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
