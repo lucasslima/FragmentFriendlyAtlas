@@ -94,6 +94,8 @@ public class AtlasAddressBar extends LinearLayout {
         setOrientation(VERTICAL);
     }
 
+
+
     public AtlasAddressBar init(LayerClient layerClient, ParticipantProvider participantProvider, Picasso picasso) {
         mLayerClient = layerClient;
         mParticipantProvider = participantProvider;
@@ -115,6 +117,7 @@ public class AtlasAddressBar extends LinearLayout {
                 return true;
             }
         });
+
 
         // Refresh available participants and conversations with every search string change
         mFilter.addTextChangedListener(new TextWatcher() {
@@ -202,16 +205,21 @@ public class AtlasAddressBar extends LinearLayout {
 
     private boolean selectParticipant(String participantId) {
         if (mSelectedParticipantIds.contains(participantId)) return true;
-        if (mSelectedParticipantIds.size() >= 24) return false;
+        if (mSelectedParticipantIds.size() >= 2) return false;
         mSelectedParticipantIds.add(participantId);
-        ParticipantChip chip = new ParticipantChip(getContext(), mParticipantProvider, participantId, mPicasso);
-        mSelectedParticipantLayout.addView(chip, mSelectedParticipantLayout.getChildCount() - 1);
+//        ParticipantChip chip = new ParticipantChip(getContext(), mParticipantProvider, participantId, mPicasso);
+//        mSelectedParticipantLayout.addView(chip, mSelectedParticipantLayout.getChildCount() - 1);
         mFilter.setText(null);
         refresh();
         if (mOnParticipantSelectionChangeListener != null) {
             mOnParticipantSelectionChangeListener.onParticipantSelectionChanged(this, new ArrayList<String>(mSelectedParticipantIds));
         }
         return true;
+    }
+
+    public void clearSelectedParticipants() {
+        mSelectedParticipantIds.clear();
+        refresh();
     }
 
     private void unselectParticipant(ParticipantChip chip) {
